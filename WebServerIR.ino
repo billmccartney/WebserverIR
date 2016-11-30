@@ -58,6 +58,7 @@ void setup() {
 
 
 static char currentLine[256];
+static uint8_t myBuffer[512];
 static char url[256];
 void loop() {
   int i=0;
@@ -73,47 +74,49 @@ void loop() {
     boolean currentLineIsBlank = true;
     while (client.connected()) {
       if (client.available()) {
-        char c = client.read();
-        if(c != '\r'){
-          //Serial.write(c);
-          // if you've gotten to the end of the line (received a newline
-          // character) and the line is blank, the http request has ended,
-          // so you can send a reply
-          if (c == '\n' && currentLineIsBlank) {
-            //Serial.println("Sending Response...");
-            char ** temp;
-            urlFound = 2;
-            temp = parseRequest(url,&urlFound);
-            urlFound = performCommand(temp);
-            //printRequest(temp);
-            //Serial.print("Results ");
-            //Serial.println(urlFound);
-            sendResponse(&client, urlFound);
-            //Serial.println(url);
-            //Serial.println(i);
-            break;
-          }
-          if (c == '\n')  {
-            //Serial.print(urlFound);
-            //Serial.print(" ");
-            //Serial.print(index);
-            //Serial.println(" Line Finished");
-            // you're starting a new line
-            if(!urlFound){
-              urlFound = 1;
-              strcpy(url, currentLine);
+        int results = client.read(myBuffer, sizeof(myBuffer));
+        //Serial.print("results...");
+        if(results == 0)results = -1;
+        //Serial.println(results);
+        if(results == -1)break;
+        for(int idx=0;idx<results;idx++){
+          char c = (char)(myBuffer[idx]);
+          //char c = client.read();
+          if(c != '\r'){
+            //Serial.write(c);
+            // if you've gotten to the end of the line (received a newline
+            // character) and the line is blank, the http request has ended,
+            // so you can send a reply
+            if (c == '\n' && currentLineIsBlank) {
+              //Serial.println("Sending Response...");
+              char ** temp;
+              urlFound = 2;
+              temp = parseRequest(url,&urlFound);
+              urlFound = performCommand(temp);
+              sendResponse(&client, urlFound);
+              results = -1;
+              break;
             }
-            index = 0;
-            currentLineIsBlank = true;
-          }else{
-            if(!urlFound){
-              currentLine[index++] = c;
-              i++;
+            if (c == '\n')  {
+              // you're starting a new line
+              if(!urlFound){
+                urlFound = 1;
+                currentLine[index] = 0;
+                strcpy(url, currentLine);
+              }
+              index = 0;
+              currentLineIsBlank = true;
+            }else{
+              if(!urlFound){
+                currentLine[index++] = c;
+                i++;
+              }
+              // you've gotten a character on the current line
+              currentLineIsBlank = false;
             }
-            // you've gotten a character on the current line
-            currentLineIsBlank = false;
           }
         }
+        if(results == -1)break;
       }
     }
     // give the web browser time to receive the data
@@ -215,7 +218,7 @@ void sendResponse(EthernetClient * client, int results){
   client->println("HTTP/1.1 200 OK");
   client->println("Content-Type: text/html");
   client->println("Connection: close");  // the connection will be closed after completion of the response
-  client->println("Refresh: 2");  // refresh the page automatically every 5 sec
+  //client->println("Refresh: 2");  // refresh the page automatically every 5 sec
   client->println();
   client->println("<!DOCTYPE HTML>");
   client->println("<html>");
