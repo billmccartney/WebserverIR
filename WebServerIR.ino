@@ -33,7 +33,7 @@ IRsend mySender;
 byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
-IPAddress ip(192, 168, 150, 117);
+IPAddress ip(192, 168, 150, 6);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
